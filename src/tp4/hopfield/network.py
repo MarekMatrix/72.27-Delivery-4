@@ -11,12 +11,12 @@ ALPHABET_5X5 = {
         [ 1, -1, -1,  1, -1],
         [-1,  1,  1,  1, -1]
     ]),
-    "C": np.array([
-        [-1,  1,  1,  1,  1],
-        [ 1, -1, -1, -1, -1],
-        [ 1, -1, -1, -1, -1],
-        [ 1, -1, -1, -1, -1],
-        [-1,  1,  1,  1,  1]
+    "X": np.array([
+        [ 1, -1, -1, -1,  1],
+        [-1,  1, -1,  1, -1],
+        [-1, -1,  1, -1, -1],
+        [-1,  1, -1,  1, -1],
+        [ 1, -1, -1, -1,  1]
     ]),
     "T": np.array([
         [ 1,  1,  1,  1,  1],
@@ -47,27 +47,23 @@ def flatten_pattern(matrix: np.ndarray) -> np.ndarray:
 def reshape_pattern(vector: np.ndarray, shape=(5, 5)) -> np.ndarray:
     """Reshapes a 1D vector back into a 2D matrix shape."""
     return vector.reshape(shape)
+def add_noise(pattern: np.ndarray, noise_level: float = None, rng=None,
+              num_flips: int = None) -> np.ndarray:
 
-def add_noise(pattern: np.ndarray, noise_level: float, seed: int = None) -> np.ndarray:
-    """
-    Randomly flips a percentage of bits in a pattern to simulate damage or noise.
-    
-    Parameters:
-    - pattern: 1D or 2D binary array containing values in {-1, 1}.
-    - noise_level: Float between 0.0 and 1.0 representing the fraction of bits to flip.
-    - seed: Optional random seed for reproducibility.
-    
-    Returns:
-    - Noisy copy of the pattern with the same shape.
-    """
-    rng = np.random.default_rng(seed)
-    noisy = pattern.copy()
-    flat = noisy.ravel()
-    
-    num_to_flip = int(np.ceil(noise_level * len(flat)))
-    indices_to_flip = rng.choice(len(flat), size=num_to_flip, replace=False)
-    
-    # Multiply selected bits by -1 to flip them between 1 and -1
-    flat[indices_to_flip] *= -1
-    
-    return flat.reshape(pattern.shape)
+    rng = np.random.default_rng(rng)  # returns the same Generator if one is passed
+    flat = np.asarray(pattern).flatten()  # flatten always returns a copy
+    n = flat.size
+
+    if (noise_level is None) == (num_flips is None):
+        raise ValueError("Give exactly one of noise_level or num_flips.")
+    if num_flips is None:
+        if not 0.0 <= noise_level <= 1.0:
+            raise ValueError("noise_level must be between 0.0 and 1.0.")
+        num_flips = int(round(noise_level * n))
+    if not 0 <= num_flips <= n:
+        raise ValueError(f"num_flips must be between 0 and {n}.")
+
+    indices_to_flip = rng.choice(n, size=num_flips, replace=False)
+    flat[indices_to_flip] *= -1  # flip selected bits between 1 and -1
+
+    return flat.reshape(np.shape(pattern))
