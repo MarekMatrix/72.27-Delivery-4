@@ -108,7 +108,7 @@ def run(qr_dir=None, seed=42, trials=10, check_decode=True):
     M = plot_overlap(patterns, labels, "qr_overlap.png")
     off = np.abs(M[~np.eye(len(labels), dtype=bool)])
     print(f"Overlap between codes: mean |m| = {off.mean():.3f}, max |m| = {off.max():.3f}")
-    print(f"Theoretical capacity 0.138 N = {0.138 * N:.0f} patterns (storing {len(labels)})")
+    print(f"Theoretical capacity 0.15 N = {0.15 * N:.0f} patterns (storing {len(labels)})")
 
     net = Hopfield(N)
     net.train(patterns)

@@ -76,7 +76,7 @@ For choosing letters: compute |dot products| for all candidate letters and pick 
 2.8 Capacity
 For random, uncorrelated patterns, the network can reliably store about:
 ```
-P_max ≈ 0.138 * N
+P_max ≈ 0.15 * N
 ```
 
 Letters: N = 25, so P_max ≈ 3.5. Storing 4 letters is at or above the limit, so the choice of letters matters a lot.

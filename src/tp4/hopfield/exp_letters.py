@@ -144,7 +144,7 @@ def run(seed=42, trials=200):
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.plot(P, stable, "o-", label="stored letters that are fixed points")
     ax.plot(P, recall, "s-", label="correct recall with 2 flipped pixels")
-    ax.axvline(0.138 * N, color="gray", ls="--", label=f"0.138 N = {0.138 * N:.1f}")
+    ax.axvline(0.15 * N, color="gray", ls="--", label=f"0.15 N = {0.15 * N:.1f}")
     ax.set_xlabel("number of stored letters P (random sets)")
     ax.set_ylabel("rate")
     ax.set_ylim(-0.02, 1.02)
