@@ -1,32 +1,8 @@
 """Kohonen network: grid, BMU search, neighbourhood and learning-rate schedules."""
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-
-def hex_coordinates(i, j):
-    x = i + 0.5 * (j % 2)
-    y = j * np.sqrt(3) / 2
-    return np.array([x, y])
-
-def euclidean_distance(v1, v2):
-    return np.linalg.norm(v1-v2)
-
-def exponential_distance(v1, v2):
-    return np.exp(- euclidean_distance(v1, v2)**2)
-
-def get_radius(initial_radius, time_constant, iteration):
-    return max(
-        1.0,
-        initial_radius * np.exp(-iteration / time_constant)
-    )
-    
-def visualize_som_weights(weights, feature):
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(weights[:, :, feature], cmap="viridis", annot=False, cbar=True)
-    plt.title("Kohonen Map (SOM) - Projection of Weights")
-    plt.show()
-
+from src.tp4.kohonen.metrics import euclidean_distance, exponential_distance
+from src.tp4.kohonen.topology import get_radius, hex_coordinates
 
 class Kohonen:
     def __init__(self, X: np.ndarray, map_width: int, map_height: int, n_iterations: int, learning_rate: float, initial_radius: float, time_constant: float, rng: np.random.Generator, grid_type="rectangular", distance_metric="euclidean") -> None: 
@@ -112,33 +88,42 @@ class Kohonen:
             self.update_weights(input_vector, bmu_index, radius, learning_rate)
         return self.weights
 
+    def calculate_u_matrix(self):
+        u_matrix = np.zeros((self.map_width, self.map_height), dtype=float)
+        
+        for i in range(self.map_width):
+            for j in range(self.map_height):
+                neighbor_distances = []
+                
+                for di in (-1, 0, 1):
+                    for dj in (-1, 0, 1):
+                        if di == 0 and dj ==0:
+                            continue
+                        
+                        ni, nj = i + di, j + dj
+                        
+                        # Ignore coordinates outside the map
+                        if not (0 <= ni < self.map_width and 0 <= nj < self.map_height):
+                            continue
+                        
+                        if self.grid_type == "rectangular":
+                            # Four orthogonal neighbors only
+                            if abs(di) + abs(dj) != 1:
+                                continue
+                        elif self.grid_type == "hexagonal":
+                            p1 = hex_coordinates(i, j)
+                            p2 = hex_coordinates(ni, nj)
+                            
+                            # Only immediate hexagonal neighbors
+                            if not np.isclose(euclidean_distance(p1, p2), 1.0):
+                                continue
+                        
+                        distance = euclidean_distance(self.weights[i, j], self.weights[ni, nj])
+                        neighbor_distances.append(distance)
+                        
+                if neighbor_distances:
+                    u_matrix[i, j] = np.mean(neighbor_distances)
+                
+        return u_matrix
 
-"""
-rng = np.random.default_rng(seed=42)
 
-map_width = 10
-map_height = 10
-n_iterations = 500 * X.shape[1]
-
-learning_rate = 0.5
-initial_radius = max(map_width, map_height)
-time_constant = n_iterations / np.log(initial_radius)
-
-kohonen = Kohonen(
-    X,
-    map_width,
-    map_height,
-    n_iterations,
-    learning_rate,
-    initial_radius,
-    time_constant,
-    rng,
-    grid_type="rectangular",
-    distance_metric="euclidean"
-)
-
-weights = kohonen.create_map()
-visualize_som_weights(weights, feature=1)
-
-
-"""
