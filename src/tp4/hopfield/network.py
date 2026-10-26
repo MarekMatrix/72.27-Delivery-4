@@ -47,6 +47,7 @@ def flatten_pattern(matrix: np.ndarray) -> np.ndarray:
 def reshape_pattern(vector: np.ndarray, shape=(5, 5)) -> np.ndarray:
     """Reshapes a 1D vector back into a 2D matrix shape."""
     return vector.reshape(shape)
+
 def add_noise(pattern: np.ndarray, noise_level: float = None, rng=None,
               num_flips: int = None) -> np.ndarray:
 

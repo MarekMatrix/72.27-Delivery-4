@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 # ---------------- settings for the play button ----------------
-PART = "qr"     # "letters" (2.2), "qr" (2.1) or "all"
+PART = "letters"     # "letters" (2.2), "qr" (2.1) or "all"
 TRIALS = 3          # QR runs per code per noise level (3 = quick test)
 CHECK_DECODE = False  # False = skip the QR scanning check (faster)
 SEED = 42

@@ -78,6 +78,7 @@ For random, uncorrelated patterns, the network can reliably store about:
 ```
 P_max ≈ 0.138 * N
 ```
+
 Letters: N = 25, so P_max ≈ 3.5. Storing 4 letters is at or above the limit, so the choice of letters matters a lot.
 QR codes: N = 1369, so P_max ≈ 189. Five patterns is far below the theoretical limit, but QR codes are strongly correlated (see 4), so effective capacity is lower.
 Stricter criterion (error-free recall of all bits): P_max ≈ N / (2 ln N).
@@ -93,6 +94,7 @@ Optimization (Hopfield and Tank, 1985): encode a problem such as TSP in the ener
 Theoretical neuroscience: model of associative memory in the brain.
 Foundation for Boltzmann machines and modern Hopfield networks; the modern Hopfield update rule is equivalent to transformer attention.
 Hopfield shared the 2024 Nobel Prize in Physics with Geoffrey Hinton.
+
 ---
 3. Implementation plan
 3.1 Suggested structure
@@ -136,6 +138,7 @@ Classify the outcome as: correct pattern, wrong stored pattern, inverse of a sto
 3.4 Noise models
 Random flip: flip a fraction p of the units, chosen at random. Sweep p from 0.0 to 0.5 (e.g. steps of 0.05).
 Structured damage (realistic for the use case): blank out a corner or a rectangular region, add a scratch line, add a stain blob. Set damaged pixels to -1 (white) or to random values.
+
 ---
 4. QR preprocessing
 A 37 x 37 QR code is QR version 5 (4 * 5 + 17 = 37 modules per side).
@@ -143,6 +146,7 @@ Steps: load PNG, convert to grayscale, threshold to binary, crop the white quiet
 Map black = +1, white = -1, flatten to length 1369.
 Verify visually that each 37 x 37 matrix still looks like the original QR, and optionally decode it with opencv/pyzbar to confirm it scans.
 QR codes share fixed structure: three finder squares (corners), timing lines, alignment pattern, format information. This shared structure makes the five codes strongly correlated, so compute and report the overlap matrix.
+
 ---
 5. Experiments and outputs
 5.1 Letters
@@ -169,6 +173,7 @@ Sweeps to convergence vs noise level.
 Energy vs step.
 Before / noisy / after image triplets.
 Example of a spurious state.
+
 ---
 6. Limitations to discuss
 The network can only return one of the stored codes; a new menu requires recomputing W, and an unknown or heavily damaged code returns the wrong menu.
