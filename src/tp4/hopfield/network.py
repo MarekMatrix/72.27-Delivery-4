@@ -75,17 +75,30 @@ class Hopfield:
         self.W = np.zeros((n_units, n_units))
         self.patterns = None
  
-    def train(self, patterns: np.ndarray) -> None:
-        """Hebbian rule: W = (1/N) * sum of outer products, zero diagonal.
- 
+    def train(self, patterns: np.ndarray, rule: str = "hebbian") -> None:
+        """Compute the weight matrix W from the stored patterns, zero diagonal.
+
         patterns: shape (P, N), values in {-1, +1}.
+        rule:
+          "hebbian"        W = (1/N) * X^T X. Simple, but similar patterns
+                           interfere with each other (crosstalk).
+          "pseudoinverse"  W = X^T (X X^T)^-1 X. Corrects for the overlap
+                           between patterns, so each stored pattern only
+                           votes for itself. Needs linearly independent patterns.
         """
         patterns = np.asarray(patterns, dtype=float)
         assert patterns.shape[1] == self.n, "pattern length must equal n_units"
         self.patterns = patterns.copy()
-        self.W = patterns.T @ patterns / self.n
+        if rule == "hebbian":
+            self.W = patterns.T @ patterns / self.n
+        elif rule == "pseudoinverse":
+            overlap = patterns @ patterns.T  # P x P overlap between stored patterns
+            self.W = patterns.T @ np.linalg.inv(overlap) @ patterns
+        else:
+            raise ValueError("rule must be 'hebbian' or 'pseudoinverse'")
+        self.rule = rule
         np.fill_diagonal(self.W, 0.0)
- 
+
     def energy(self, s: np.ndarray) -> float:
         return float(-0.5 * s @ self.W @ s)
  
