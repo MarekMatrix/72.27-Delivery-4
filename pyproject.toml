@@ -7,10 +7,12 @@ dependencies = [
     "pandas",
     "matplotlib",
     "pillow",
+    "scikit-learn>=1.9.1",
+    "seaborn>=0.13.2",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "jupyter"]
+dev = ["jupyter"]
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -18,6 +20,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
