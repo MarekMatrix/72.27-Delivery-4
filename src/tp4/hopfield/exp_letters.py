@@ -82,7 +82,7 @@ def find_example(net, names, outcome, k, rng, tries=2000):
             return idx, noisy, r
     return None
 
-def evaluate_capacity_multi_run(max_p=10, n_runs=10, subsets=50, k_noise=2):
+def evaluate_capacity_multi_run(max_p=10, n_runs=100, subsets=50, k_noise=2):
     """
     Evaluates Hopfield capacity over multiple independent runs to 
     account for random seed / letter subset variance.
