@@ -17,7 +17,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from src.tp4.data import prepare_data
+from src.tp4.data import load_creators, standardise
 from src.tp4.kohonen.kohonen import Kohonen
 from src.tp4.kohonen.metrics import (
     bmu_assignments,
@@ -44,6 +44,16 @@ BASELINE = {
     "n_iterations": 1000,
     "initial_radius": 6,
 }
+
+# Parameters where "smaller is simpler": the winner is the smallest value within
+# one std of the best mean held-out QE (see pick_winner).
+PARSIMONY = {"map_size"}
+
+# Parameters with no natural "simpler" value, where candidates whose held-out QE
+# is within one std of the best are treated as tied and the lowest held-out
+# topographic error wins. Caveat: TE is not strictly comparable across grid types
+# (a hexagon has 6 neighbours, a rectangle 4).
+TE_TIEBREAK = {"grid_type"}
 
 # (hyperparameter, candidate values) in the order they are tuned.
 # Map size goes first because every later stage depends on it.
@@ -76,30 +86,36 @@ def build_and_train(X_train, config, seed):
     return som
 
 
-def evaluate_cv(X, config, seed):
-    """K-fold CV. Returns one dict per fold with train and held-out metrics."""
-    folds = np.array_split(np.random.default_rng(seed).permutation(len(X)), K_FOLDS)
+def evaluate_cv(df, config, seed):
+    """K-fold CV on the RAW feature DataFrame. Returns one dict per fold with
+    train and held-out metrics.
+
+    Scaling is fitted on each fold's training creators only and then applied to
+    the held-out ones, so held-out creators never influence the scaler."""
+    folds = np.array_split(np.random.default_rng(seed).permutation(len(df)), K_FOLDS)
     rows = []
     for fold, test_idx in enumerate(folds):
-        train_idx = np.setdiff1d(np.arange(len(X)), test_idx)
-        som = build_and_train(X[train_idx], config, seed)
+        train_idx = np.setdiff1d(np.arange(len(df)), test_idx)
+        X_train, scaler = standardise(df.iloc[train_idx])
+        X_test = scaler.transform(df.iloc[test_idx])
+        som = build_and_train(X_train, config, seed)
         rows.append({
             "fold": fold,
-            "train_qe": quantization_error(som, X[train_idx]),
-            "heldout_qe": quantization_error(som, X[test_idx]),
-            "heldout_te": topographic_error(som, X[test_idx]),
-            "used_neurons": int(np.count_nonzero(bmu_assignments(som, X[train_idx])[1])),
+            "train_qe": quantization_error(som, X_train),
+            "heldout_qe": quantization_error(som, X_test),
+            "heldout_te": topographic_error(som, X_test),
+            "used_neurons": int(np.count_nonzero(bmu_assignments(som, X_train)[1])),
             "total_neurons": config["map_size"] ** 2,
         })
     return rows
 
 
-def run_stage(X, current_best, param, values, stage_idx):
+def run_stage(df, current_best, param, values, stage_idx):
     rows = []
     for value in values:
         config = {**current_best, param: value}
         for seed in SEEDS:
-            for result in evaluate_cv(X, config, seed):
+            for result in evaluate_cv(df, config, seed):
                 rows.append({"stage": stage_idx, "param": param, "value": value,
                              "seed": seed, **config, **result})
         part = pd.DataFrame(rows[-len(SEEDS) * K_FOLDS:])
@@ -109,8 +125,14 @@ def run_stage(X, current_best, param, values, stage_idx):
     return pd.DataFrame(rows)
 
 
-def pick_winner(stage_df):
-    """Lowest mean held-out QE. Held-out TE is reported next to it, not used to rank."""
+def pick_winner(stage_df, param):
+    """Pick a candidate by held-out QE. Held-out TE is reported next to it, not used to rank.
+
+    Default: lowest mean held-out QE. For parameters in PARSIMONY the winner is
+    instead the SMALLEST value whose mean QE is within one std (of the best
+    candidate's runs) of the best mean, so noise-level gains from a bigger map
+    do not win. For parameters in TE_TIEBREAK, candidates within the same cutoff
+    are tied on QE and the one with the lowest held-out TE wins."""
     summary = (
         stage_df.groupby("value")
         .agg(heldout_qe=("heldout_qe", "mean"), heldout_qe_std=("heldout_qe", "std"),
@@ -118,12 +140,23 @@ def pick_winner(stage_df):
         .reset_index()
         .sort_values(["heldout_qe", "heldout_qe_std"])
     )
+    best = summary.iloc[0]
+    if param in PARSIMONY or param in TE_TIEBREAK:
+        cutoff = best["heldout_qe"] + best["heldout_qe_std"]
+        within = summary[summary["heldout_qe"] <= cutoff]
+        print(f"  cutoff = {best['heldout_qe']:.4f} + {best['heldout_qe_std']:.4f} = {cutoff:.4f}; "
+              f"within cutoff: {sorted(within['value'].tolist())}")
+        if param in PARSIMONY:
+            return within["value"].min(), summary
+        return within.sort_values("heldout_te")["value"].iloc[0], summary
     return summary["value"].iloc[0], summary
 
 
-def save_final_model(X, feature_names, config):
+def save_final_model(df, config):
     """Train the final config on ALL creators (best of the seeds by training QE)
-    and save the arrays used by the notebook."""
+    and save the arrays used by the notebook, plus the scaler parameters needed
+    to project a new creator onto the same map."""
+    X, scaler = standardise(df)
     soms = [(build_and_train(X, config, s), s) for s in SEEDS]
     som, seed = min(soms, key=lambda r: quantization_error(r[0], X))
     bmu_indices, bmu_counts = bmu_assignments(som, X)
@@ -135,7 +168,9 @@ def save_final_model(X, feature_names, config):
         bmu_counts=bmu_counts,
         bmu_indices=bmu_indices,
         u_matrix=calculate_u_matrix(som),
-        feature_names=np.asarray(feature_names, dtype=str),
+        feature_names=np.asarray(df.columns, dtype=str),
+        scaler_mean=scaler.mean_,
+        scaler_scale=scaler.scale_,
     )
     metadata = {**config, "seed": seed,
                 "train_quantization_error": quantization_error(som, X),
@@ -147,8 +182,8 @@ def save_final_model(X, feature_names, config):
 
 
 def main():
-    X, feature_names, *_ = prepare_data(DATA_PATH)
-    print(f"{X.shape[0]} samples, {X.shape[1]} features, {K_FOLDS}-fold CV x {len(SEEDS)} seeds")
+    df = load_creators(DATA_PATH)
+    print(f"{df.shape[0]} samples, {df.shape[1]} features, {K_FOLDS}-fold CV x {len(SEEDS)} seeds")
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     current_best = dict(BASELINE)
@@ -158,8 +193,8 @@ def main():
     for stage_idx, (param, values) in enumerate(STAGES):
         print(f"\nStage {stage_idx}: {param} over {values} | frozen: "
               f"{ {k: v for k, v in current_best.items() if k != param} }")
-        stage_df = run_stage(X, current_best, param, values, stage_idx)
-        winner, summary = pick_winner(stage_df)
+        stage_df = run_stage(df, current_best, param, values, stage_idx)
+        winner, summary = pick_winner(stage_df, param)
         # numpy scalars -> plain Python so the config stays JSON-serialisable
         winner = winner.item() if hasattr(winner, "item") else winner
         current_best[param] = winner
@@ -173,7 +208,7 @@ def main():
     with open(RESULTS_DIR / "kohonen_best_config.json", "w", encoding="utf-8") as f:
         json.dump({"config": current_best, "winners": winners}, f, indent=4)
 
-    save_final_model(X, feature_names, current_best)
+    save_final_model(df, current_best)
     print("\nFinal config:", current_best)
 
 

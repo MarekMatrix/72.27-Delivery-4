@@ -1,15 +1,24 @@
 from src.tp4.kohonen.topology import hex_coordinates
 from matplotlib.patches import RegularPolygon, Rectangle
 import matplotlib.pyplot as plt
+from matplotlib import patheffects
 import numpy as np
 import seaborn as sns
 
 
 def plot_som_grid(values, grid_type="rectangular",
-                  title="", colorbar_label="Value"):
+                  title="", colorbar_label="Value",
+                  labels=None, ax=None, figsize=(9, 7), label_fontsize=6):
+    """Draw one value per neuron. `labels` maps (i, j) -> text drawn on that cell.
+    Pass `ax` to draw into an existing axes (small multiples); the caller then
+    owns layout and plt.show()."""
     width, height = values.shape[:2]
 
-    fig, ax = plt.subplots(figsize=(9, 7))
+    own_figure = ax is None
+    if own_figure:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = ax.figure
 
     vmin = np.nanmin(values)
     vmax = np.nanmax(values)
@@ -47,6 +56,13 @@ def plot_som_grid(values, grid_type="rectangular",
             else:
                 raise ValueError("Unknown grid type")
 
+    if labels:
+        for (i, j), text in labels.items():
+            x, y = hex_coordinates(i, j) if grid_type == "hexagonal" else (i, j)
+            ax.text(x, y, text, ha="center", va="center", fontsize=label_fontsize,
+                    color="white",
+                    path_effects=[patheffects.withStroke(linewidth=2, foreground="black")])
+
     if grid_type == "hexagonal":
         coords = np.array([
             hex_coordinates(i, j)
@@ -71,16 +87,19 @@ def plot_som_grid(values, grid_type="rectangular",
     fig.colorbar(scalar_map, ax=ax, label=colorbar_label,
                  shrink=0.8)
 
-    plt.tight_layout()
-    plt.show()
+    if own_figure:
+        plt.tight_layout()
+        plt.show()
 
 
-def visualize_som_weights(weights, feature, grid_type="rectangular"):
+def visualize_som_weights(weights, feature, grid_type="rectangular",
+                          feature_name=None, ax=None):
     plot_som_grid(
         weights[:, :, feature],
         grid_type=grid_type,
-        title=f"SOM weights - Feature {feature}",
-        colorbar_label="Standardized feature value"
+        title=feature_name or f"SOM weights - Feature {feature}",
+        colorbar_label="Standardized feature value",
+        ax=ax,
     )
 
 def visualize_u_matrix(u_matrix, grid_type="rectangular"):
