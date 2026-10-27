@@ -9,7 +9,7 @@ quantization error (QE) penalises memorisation, so larger maps no longer win
 automatically. Held-out topographic error (TE) is recorded alongside it.
 
 Run from the project root:
-    python -m experiments.run_kohonen_tuning
+    python -m tp4.kohonen.run_kohonen_tuning
 """
 from pathlib import Path
 import json

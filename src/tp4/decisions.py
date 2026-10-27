@@ -57,7 +57,7 @@ STRATEGIES = {
 # ------------------------------------------------------------------
 
 def load_som(path: str | Path) -> dict:
-    """Load the arrays saved by experiments/run_kohonen_tuning.py.
+    """Load the arrays saved by src/tp4/kohonen/run_kohonen_tuning.py.
 
     Args:
         path: Path to som_tuned.npz, e.g. "results/kohonen_models/som_tuned.npz".

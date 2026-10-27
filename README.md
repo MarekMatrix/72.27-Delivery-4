@@ -18,7 +18,7 @@ Or with [uv](https://docs.astral.sh/uv/): `uv sync --extra dev`, then prefix the
 Train and tune the Kohonen map first; it writes `results/`, which the notebooks read:
 
 ```bash
-python -m experiments.run_kohonen_tuning
+python -m tp4.kohonen.run_kohonen_tuning
 ```
 
 Then open the notebooks with `jupyter lab notebooks/`:
@@ -26,7 +26,7 @@ Then open the notebooks with `jupyter lab notebooks/`:
 | Notebook | Section |
 |---|---|
 | `exercise_1_1_eda_pca.ipynb` | 1.1 EDA and PCA |
-| `kohonen_tuning.ipynb` | 1.2 Kohonen map |
+| `exercise_1_2_kohonen.ipynb` | 1.2 Kohonen map |
 | `exercise_1_3_oja.ipynb` | 1.3 Oja index |
 | `exercise_1_4_decisions.ipynb` | 1.4 Campaign decisions |
 
