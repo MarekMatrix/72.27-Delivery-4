@@ -27,9 +27,9 @@ def best_set(size=4):
     return min(scored, key=lambda x: (x[0][0], x[0][1]))
 
 
-def build_net(names):
+def build_net(names, rule="hebbian"):
     net = Hopfield(N)
-    net.train(letters_to_patterns(names))
+    net.train(letters_to_patterns(names), rule=rule)
     return net
 
 
@@ -100,6 +100,8 @@ def run(seed=42, trials=200):
         mx, mean = score_set(names)
         print(f"{label:>6} set {''.join(names)}: max|m| = {mx:.2f}, mean|m| = {mean:.2f}, "
               f"unstable pixels per letter = {stability(build_net(names), names)}")
+        print(f"{'':>6} same set with the pseudo-inverse rule: unstable pixels per letter = "
+              f"{stability(build_net(names, 'pseudoinverse'), names)}")
         plot_patterns(letters_to_patterns(names), names, LETTER_SIDE, f"letters_set_{label}.png")
         plot_overlap(letters_to_patterns(names), names, f"letters_overlap_{label}.png",
                      f"Overlap, {label} set {''.join(names)}")
@@ -167,8 +169,16 @@ def run(seed=42, trials=200):
             idx, noisy, r = ex
             plot_recall(net, net.patterns[idx], noisy, r, LETTER_SIDE, f"letters_{outcome}_state.png",
                         f"{outcome.capitalize()} state from very noisy {STORED[idx]} (11 px flipped)")
-            print(f"Found {outcome} state: final energy {r['energy_sweep'][-1]:.3f}, "
-                  f"stored letter energy {net.energy(net.patterns[idx]):.3f}")
+            _, got = classify(r["state"], net.patterns, idx)
+            msg = (f"Found {outcome} state from damaged {STORED[idx]}: "
+                   f"final energy {r['energy_sweep'][-1]:.3f}")
+            if got is not None:
+                msg += (f", ended in the inverse of {STORED[got]} "
+                        f"(energy of {STORED[got]}: {net.energy(net.patterns[got]):.3f})")
+            else:
+                energies = ", ".join(f"{n} {net.energy(p):.2f}" for n, p in zip(STORED, net.patterns))
+                msg += f", not a stored letter (energies of the stored letters: {energies})"
+            print(msg)
         else:
             print(f"No {outcome} state found")
 
