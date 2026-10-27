@@ -82,6 +82,37 @@ def find_example(net, names, outcome, k, rng, tries=2000):
             return idx, noisy, r
     return None
 
+def evaluate_capacity_multi_run(max_p=10, n_runs=10, subsets=50, k_noise=2):
+    """
+    Evaluates Hopfield capacity over multiple independent runs to 
+    account for random seed / letter subset variance.
+    """
+    P_values = np.arange(1, max_p + 1)
+    stable_results = np.zeros((n_runs, max_p))
+    recall_results = np.zeros((n_runs, max_p))
+    
+    for run in range(n_runs):
+        # Use a different seed for each run as recommended for stochastic evaluations
+        rng = np.random.default_rng(seed=100 + run)
+        
+        # Calls your existing capacity_curve function
+        stable, recall = capacity_curve(max_p, subsets=subsets, k_noise=k_noise, rng=rng)
+        
+        stable_results[run, :] = stable
+        recall_results[run, :] = recall
+
+    # Compute average across all runs
+    avg_stable = np.mean(stable_results, axis=0)
+    avg_recall = np.mean(recall_results, axis=0)
+    
+    # Print formatted table for your presentation/report
+    print(f"{'P':<5} | {'Stable (Fixed Point %)':<25} | {'Recall (2 Flipped Pixels %)'}")
+    print("-" * 60)
+    for i, p in enumerate(P_values):
+        print(f"{p:<5} | {avg_stable[i]*100:6.1f}%                    | {avg_recall[i]*100:6.1f}%")
+        
+    return avg_stable, avg_recall
+
 
 def run(seed=42, trials=200):
     rng = np.random.default_rng(seed)
@@ -151,6 +182,8 @@ def run(seed=42, trials=200):
     ax.grid(alpha=0.3)
     ax.legend()
     save(fig, "letters_capacity.png")
+
+    avg_s, avg_r = evaluate_capacity_multi_run()
 
     # 4. Recall examples and spurious states with the stored set
     net = build_net(STORED)
