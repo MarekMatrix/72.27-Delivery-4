@@ -88,6 +88,57 @@ clusters, then switched to `tp4.data` once the feature set is fixed.
 
 Changing this contract after B starts using it should be a PR both A and B review.
 
+### Agreed input (decided in 1.1)
+
+Every part of exercise 1 (1.2 Kohonen, 1.3 Oja, 1.4 decisions) uses the same variables and scaling:
+
+```python
+import pandas as pd
+from tp4.data import load_creators, standardise
+
+df = load_creators("data/creadores.csv")       # 50 creators × 28 variables
+X_scaled, scaler = standardise(df)             # z-scores; keep scaler for new data
+names = pd.read_csv("data/creadores.csv")["name"].tolist()   # labels, same row order
+```
+
+`load_creators()` is the single source of truth for the variable selection. Change
+`_ID_COLS` / `_REDUNDANT_COLS` in `src/tp4/data.py` rather than dropping columns elsewhere, and
+update the list below.
+
+**The 28 variables**
+
+| Group | Variables |
+|---|---|
+| Size and reach | `followers`, `average_reach`, `average_impressions`, `average_video_views`, `estimated_argentina_reach`, `non_follower_reach_pct` |
+| Commercial | `price_usd`, `sponsored_posts_pct`, `monthly_posts` |
+| Audience | `argentina_audience_pct` |
+| Engagement (per 1000 reached) | `likes_per_1000`, `comments_per_1000`, `saves_per_1000`, `shares_per_1000`, `profile_visits_per_1000` |
+| Topic (sum to 100) | `topic_football_pct`, `topic_makeup_pct`, `topic_dogs_pct`, `topic_art_pct` |
+| Content type (sum to 100) | `content_tutorial_pct`, `content_review_pct`, `content_entertainment_pct`, `content_showcase_pct` |
+| Format and style | `video_posts_pct`, `short_form_posts_pct`, `trend_posts_pct`, `average_caption_words`, `average_watch_time_seconds` |
+
+**Removed:** `creator_id`, `name` (identifiers), and `price_ars`, `organic_posts_pct`,
+`total_engagement_per_1000` (exact functions of kept columns).
+
+**Kept on purpose:** `estimated_argentina_reach` is derived, but as a product of two varying
+columns it cannot be rebuilt by PCA or Kohonen, and Argentine reach matters for the clients. All
+four topic and content columns are kept although each group sums to 100, so every topic (one per
+client) stays interpretable; this gives two zero-variance principal components.
+
+**Column order matters:** Kohonen and Oja weights come out in the order of `df.columns`, so weight
+*i* belongs to column *i* (`followers` is 0, `trend_posts_pct` is 27).
+
+**No dimensionality reduction:** Kohonen and Oja take all 28 standardised variables; PCA is the
+reference for interpreting them. Reasons, the PCA results and per-exercise tips are in section 6 of
+`notebooks/exercise_1_1_eda_pca.ipynb`. The short version:
+
+- **1.2 Kohonen:** compare the map with the PCA biplot (PC1: size ↔ depth, PC2: Argentine
+  audience and dogs ↔ art and showcase). The six size variables are highly correlated, so they
+  weigh heavily in Euclidean distances.
+- **1.3 Oja:** should converge to PC1: compare with `fit_pca(X_scaled).components_[0]` from
+  `tp4.linear.pca`; the sign may be opposite. The index is mostly audience size.
+- **1.4 Decisions:** after a monthly data update, refit the scaler and the PCA before projecting.
+
 ## Workflow
 
 - Branches: `feat/<area>-<topic>`, e.g. `feat/kohonen-umatrix`. Rebase onto `main` before merging.
